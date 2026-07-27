@@ -1,0 +1,53 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #f6f8fa;
+  color: #1f2328;
+}
+
+header {
+  padding: 1rem 2rem;
+  background: #24292f;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+header a {
+  color: #fff;
+  text-decoration: none;
+}
+
+main#app {
+  max-width: 860px;
+  margin: 2rem auto;
+  padding: 0 1.5rem 3rem;
+}
+
+.file-list {
+  list-style: none;
+  padding: 0;
+}
+
+.file-list li {
+  margin-bottom: 0.5rem;
+}
+
+.file-list a {
+  text-decoration: none;
+  color: #0969da;
+  font-size: 1.05rem;
+}
+
+.file-list a:hover {
+  text-decoration: underline;
+}
+
+.markdown-body {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+}

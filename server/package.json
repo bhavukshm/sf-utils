@@ -1,0 +1,13 @@
+{
+  "name": "sf-utils-docs-server",
+  "version": "1.0.0",
+  "description": "Lightweight personal Markdown docs server (Fastify + Pino)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.28.1",
+    "@fastify/static": "^7.0.4"
+  }
+}
