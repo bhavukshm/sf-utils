@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playwright for Salesforce — QA Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#101418;          /* near-black text */
+    --paper:#f6f4ef;        /* warm paper */
+    --panel:#ffffff;
+    --line:#d9d4c8;         /* hairline */
+    --sf:#0b5cab;           /* salesforce-ish blue */
+    --sf-deep:#032d5c;
+    --amber:#c9761b;        /* accent for warnings/pins */
+    --mint:#0d7d6b;         /* success/verify */
+    --code-bg:#0d1620;      /* deep slate for code */
+    --code-ink:#e7edf3;
+    --code-cmt:#6f8ba0;     /* comment grey-blue */
+    --code-kw:#7fb3ff;      /* keyword blue */
+    --code-str:#9fe0a5;     /* string green */
+    --code-fn:#f4c977;      /* function amber */
+    --shell-bg:#101a12;     /* terminal green-black */
+    --shell-ink:#a8f0b8;
+    --shell-prompt:#5fd67a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--sf)}
+
+/_ ---------- header ---------- _/
+header{
+background:linear-gradient(160deg,var(--sf-deep),var(--sf));
+color:#fff;padding:64px 24px 52px;position:relative;overflow:hidden;
+}
+header::after{
+content:"</>";position:absolute;right:-10px;bottom:-40px;
+font-family:'JetBrains Mono',monospace;font-size:220px;font-weight:700;
+color:rgba(255,255,255,.06);pointer-events:none;
+}
+.wrap{max-width:960px;margin:0 auto}
+.eyebrow{
+font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.28em;
+text-transform:uppercase;color:#bcd8ff;margin:0 0 14px;
+}
+header h1{
+font-family:'Fraunces',serif;font-weight:900;font-size:clamp(34px,6vw,60px);
+line-height:1.02;margin:0 0 16px;letter-spacing:-.01em;
+}
+header p{max-width:620px;margin:0;color:#dbe8fb;font-size:17px}
+.byline{
+margin-top:26px;font-family:'JetBrains Mono',monospace;font-size:12.5px;
+color:#9fc2f0;border-left:2px solid #4d8fd6;padding-left:12px;
+}
+
+/_ ---------- toc ---------- _/
+nav.toc{max-width:960px;margin:-28px auto 0;padding:0 24px;position:relative;z-index:2}
+.toc-inner{
+background:var(--panel);border:1px solid var(--line);border-radius:14px;
+padding:22px 26px;box-shadow:0 18px 40px -28px rgba(3,45,92,.55);
+columns:2;column-gap:34px;
+}
+.toc-inner h2{
+font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.24em;
+text-transform:uppercase;color:var(--amber);margin:0 0 12px;column-span:all;
+}
+.toc-inner ol{margin:0;padding:0;list-style:none;counter-reset:t}
+.toc-inner li{
+counter-increment:t;padding:5px 0;break-inside:avoid;font-size:14.5px;
+display:flex;gap:10px;align-items:baseline;
+}
+.toc-inner li::before{
+content:counter(t,decimal-leading-zero);
+font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sf);
+font-weight:700;min-width:22px;
+}
+.toc-inner a{text-decoration:none;color:var(--ink)}
+.toc-inner a:hover{color:var(--sf)}
+
+/_ ---------- main ---------- _/
+main{max-width:960px;margin:0 auto;padding:56px 24px 80px}
+section{margin:0 0 60px;scroll-margin-top:20px}
+.sec-head{display:flex;gap:16px;align-items:flex-start;margin-bottom:8px}
+.num{
+font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;
+color:#fff;background:var(--sf);border-radius:8px;padding:6px 11px;
+line-height:1;margin-top:6px;flex-shrink:0;
+}
+section h2{
+font-family:'Fraunces',serif;font-weight:600;font-size:clamp(23px,3.4vw,30px);
+margin:0;line-height:1.15;letter-spacing:-.01em;
+}
+.lede{color:#40484f;margin:6px 0 18px;font-size:15.5px}
+p{margin:0 0 14px}
+h3{
+font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.16em;
+text-transform:uppercase;color:var(--sf-deep);margin:26px 0 10px;
+}
+
+/_ ---------- code blocks ---------- _/
+.block{margin:14px 0 8px;border-radius:12px;overflow:hidden;border:1px solid #0a121a}
+.block .cap{
+font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;
+text-transform:uppercase;padding:8px 14px;display:flex;justify-content:space-between;
+align-items:center;
+}
+.js .cap{background:#16232f;color:#f4c977;border-bottom:1px solid #0a121a}
+.sh .cap{background:#152618;color:var(--shell-prompt);border-bottom:1px solid #06110a}
+.js .cap::before{content:"JS"}
+.sh .cap::before{content:"BASH"}
+pre{margin:0;padding:16px 18px;overflow-x:auto;font-family:'JetBrains Mono',monospace;
+font-size:13px;line-height:1.65;tab-size:2}
+.js pre{background:var(--code-bg);color:var(--code-ink)}
+.sh pre{background:var(--shell-bg);color:var(--shell-ink)}
+.cmt{color:var(--code-cmt);font-style:italic}
+.kw{color:var(--code-kw)}
+.str{color:var(--code-str)}
+.fn{color:var(--code-fn)}
+.sh .p{color:var(--shell-prompt)} /_ $ prompt _/
+.sh .cmt{color:#5c8a6a}
+
+/_ ---------- callouts ---------- _/
+.note{
+border-left:3px solid var(--amber);background:#fbf3e6;padding:12px 16px;
+border-radius:0 8px 8px 0;font-size:14px;margin:16px 0;color:#5a4213;
+}
+.note strong{color:var(--amber)}
+.tip{
+border-left:3px solid var(--mint);background:#e9f6f2;padding:12px 16px;
+border-radius:0 8px 8px 0;font-size:14px;margin:16px 0;color:#0c5044;
+}
+.tip strong{color:var(--mint)}
+
+code.inl{
+font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#e7e2d6;
+padding:1px 6px;border-radius:5px;color:var(--sf-deep);
+}
+
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;
+text-transform:uppercase;color:var(--sf-deep)}
+td code{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--amber)}
+
+footer{border-top:1px solid var(--line);padding:30px 24px;text-align:center;
+color:#7a7568;font-size:13px;font-family:'JetBrains Mono',monospace}
+
+@media(max-width:640px){
+.toc-inner{columns:1}
+header{padding:48px 20px 44px}
+}
+</style>
+
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">QA Field Guide · Automated Testing</p>
+    <h1>Playwright for Salesforce</h1>
+    <p>Everything a junior needs to record, run, and stabilize browser tests against Salesforce orgs — profiles, sessions, pauses, and waits, with copy-paste JS and one-line commands.</p>
+    <div class="byline">// from a Senior QA who has fought Lightning load times and lived</div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <h2>What's inside</h2>
+    <ol>
+      <li><a href="#s1">Setup &amp; the two CLIs</a></li>
+      <li><a href="#s2">Launch with your real Chrome profile</a></li>
+      <li><a href="#s3">Reusable persistent test profile</a></li>
+      <li><a href="#s4">Editing code while recording</a></li>
+      <li><a href="#s5">Run a test with a chosen profile</a></li>
+      <li><a href="#s6">Manual breaks &amp; timed pauses</a></li>
+      <li><a href="#s7">Keep waiting until a component appears</a></li>
+      <li><a href="#s8">The config file, explained</a></li>
+    </ol>
+  </div>
+</nav>
+
+<main>
+
+<!-- 1 -->
+<section id="s1">
+  <div class="sec-head"><span class="num">01</span><h2>Setup &amp; the two CLIs you'll use</h2></div>
+  <p class="lede">Playwright ships two entry points: the <strong>test runner</strong> (<code class="inl">@playwright/test</code>) for your specs, and the <strong>Playwright CLI</strong> (<code class="inl">playwright</code>) for codegen, browser installs, and one-off launches.</p>
+
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Install the test runner + CLI, then download browser binaries (one shot)</span>
+<span class="p">$</span> npm init playwright@latest <span class="cmt"># scaffolds config, example specs, installs browsers</span></pre></div>
+
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># If Playwright is already in the repo, just fetch the browsers</span>
+<span class="p">$</span> npx playwright install chromium <span class="cmt"># pulls only Chromium; drop the name for all engines</span></pre></div>
+
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// A minimal spec so you can see the shape of a test</span>
+<span class="kw">import</span> { test, expect } <span class="kw">from</span> <span class="str">'@playwright/test'</span>; <span class="cmt">// runner + assertions</span>
+
+test(<span class="str">'sandbox home loads'</span>, <span class="kw">async</span> ({ page }) => { <span class="cmt">// page = fresh browser tab</span>
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'https://my-sandbox.sandbox.my.salesforce.com'</span>); <span class="cmt">// open the org</span>
+<span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">toHaveTitle</span>(/Salesforce/); <span class="cmt">// assert the tab title</span>
+});</pre></div>
+
+  <div class="tip"><strong>Rule of thumb —</strong> use <code class="inl">npx playwright ...</code> for anything interactive (recording, launching, showing reports) and <code class="inl">npx playwright test</code> for running specs in CI or locally.</div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+  <div class="sec-head"><span class="num">02</span><h2>Launch Chrome with your real (main) profile</h2></div>
+  <p class="lede">Reuse your everyday Chrome — saved passwords, MFA-trusted device, and live Salesforce sessions all come along. This is a fast way to poke at an org without logging in again.</p>
+
+  <h3>The one-liner (fastest)</h3>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Point codegen at your OS Chrome profile dir; --channel=chrome uses installed Chrome, not bundled Chromium</span>
+<span class="p">$</span> npx playwright codegen --channel=chrome --user-data-dir=<span class="str">"$HOME/Library/Application Support/Google/Chrome"</span> https://login.salesforce.com</pre></div>
+
+  <div class="note"><strong>Heads-up —</strong> Chrome refuses to open a profile that another Chrome window already holds open. <em>Fully quit Chrome first</em>, or you'll get a "profile in use" / lock error.</div>
+
+  <h3>Profile directory by OS</h3>
+  <table>
+    <tr><th>OS</th><th>Default Chrome user-data-dir</th></tr>
+    <tr><td>macOS</td><td><code>~/Library/Application Support/Google/Chrome</code></td></tr>
+    <tr><td>Windows</td><td><code>%LOCALAPPDATA%\Google\Chrome\User Data</code></td></tr>
+    <tr><td>Linux</td><td><code>~/.config/google-chrome</code></td></tr>
+  </table>
+
+  <h3>Same thing in JS</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="kw">import</span> { chromium } <span class="kw">from</span> <span class="str">'playwright'</span>; <span class="cmt">// core lib, not the test runner</span>
+
+<span class="cmt">// launchPersistentContext keeps cookies/sessions on disk; '' would be a temp dir,</span>
+<span class="cmt">// so we pass the REAL Chrome data dir to inherit logins.</span>
+<span class="kw">const</span> ctx = <span class="kw">await</span> chromium.<span class="fn">launchPersistentContext</span>(
+process.env.HOME + <span class="str">'/Library/Application Support/Google/Chrome'</span>, <span class="cmt">// user-data-dir</span>
+{
+channel: <span class="str">'chrome'</span>, <span class="cmt">// use system Chrome (has your extensions + profile)</span>
+headless: <span class="kw">false</span>, <span class="cmt">// you want to SEE it</span>
+args: [<span class="str">'--profile-directory=Default'</span>], <span class="cmt">// pick which profile ("Default", "Profile 1"...)</span>
+}
+);
+<span class="kw">const</span> page = <span class="kw">await</span> ctx.<span class="fn">newPage</span>(); <span class="cmt">// already-authenticated tab</span>
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'https://my-sandbox.sandbox.my.salesforce.com'</span>);</pre></div>
+
+  <div class="note"><strong>Warning —</strong> automating your primary profile can dirty your real history/cookies and is riskier if a script misbehaves. For repeatable work, prefer the dedicated test profile in the next section.</div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+  <div class="sec-head"><span class="num">03</span><h2>A reusable, persistent test profile</h2></div>
+  <p class="lede">Create a throwaway profile folder <em>once</em>, log into your sandbox <em>once</em>, and every future launch pointed at that folder starts already logged in. This is the pattern you'll use daily.</p>
+
+  <h3>Step 1 — create the profile &amp; log in (interactive, one time)</h3>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Fresh empty dir becomes a brand-new profile; log into the sandbox by hand this once</span>
+<span class="p">$</span> npx playwright codegen --channel=chrome --user-data-dir=./.auth/sf-profile https://test.salesforce.com</pre></div>
+  <p>Log in fully (including MFA). When you close the window, the session cookies are written into <code class="inl">./.auth/sf-profile</code>.</p>
+
+  <h3>Step 2 — relaunch anytime, already authenticated</h3>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Same dir = same cookies; you land inside the sandbox with no login prompt</span>
+<span class="p">$</span> npx playwright open --channel=chrome --user-data-dir=./.auth/sf-profile https://my-sandbox.sandbox.my.salesforce.com</pre></div>
+
+  <h3>The reusable JS helper</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="kw">import</span> { chromium } <span class="kw">from</span> <span class="str">'playwright'</span>;
+
+<span class="cmt">// Reusable launcher: any script that imports this gets the SAME logged-in profile.</span>
+<span class="kw">export async function</span> <span class="fn">openSandbox</span>() {
+<span class="kw">const</span> ctx = <span class="kw">await</span> chromium.<span class="fn">launchPersistentContext</span>(
+<span class="str">'./.auth/sf-profile'</span>, <span class="cmt">// dedicated dir -> sessions survive between runs</span>
+{ channel: <span class="str">'chrome'</span>, headless: <span class="kw">false</span> }
+);
+<span class="cmt">// Reuse the tab Chrome already opened instead of spawning a blank one</span>
+<span class="kw">const</span> page = ctx.<span class="fn">pages</span>()[<span class="str">0</span>] ?? <span class="kw">await</span> ctx.<span class="fn">newPage</span>();
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'https://my-sandbox.sandbox.my.salesforce.com'</span>); <span class="cmt">// no login needed</span>
+<span class="kw">return</span> { ctx, page };
+}</pre></div>
+
+  <div class="tip"><strong>Cleaner alternative —</strong> instead of a whole profile folder, you can save just the auth state to a single JSON file with <code class="inl">page.context().storageState({ path: 'auth.json' })</code> after logging in, then load it per test with <code class="inl">use: { storageState: 'auth.json' }</code>. Lighter, and Git-ignorable. Add both <code class="inl">.auth/</code> and <code class="inl">auth.json</code> to <code class="inl">.gitignore</code> — they contain live session tokens.</div>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+  <div class="sec-head"><span class="num">04</span><h2>Can you edit code <em>while</em> recording?</h2></div>
+  <p class="lede">Short answer: the codegen recorder window is <strong>read-only</strong> — you can't type into that generated-code pane. But there are two clean ways to get editable code out of a live session.</p>
+
+  <h3>Option A — record, then paste &amp; edit</h3>
+  <p>Use the recorder's toolbar to <strong>copy</strong> the generated script (choose your language from the dropdown), then paste into your editor and edit freely. You can also record straight to a file:</p>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># -o writes the generated test to a file you then open in your IDE to edit</span>
+<span class="p">$</span> npx playwright codegen -o tests/case-flow.spec.ts --channel=chrome --user-data-dir=./.auth/sf-profile https://my-sandbox.sandbox.my.salesforce.com</pre></div>
+
+  <h3>Option B — pause inside a running test and record live</h3>
+  <p>This is the real "edit while recording" experience. Drop <code class="inl">page.pause()</code> into a spec; the Inspector opens with <strong>Record</strong> and <strong>Explore</strong> buttons. Your existing code keeps running, and new actions you perform are generated live — which you then copy into your file.</p>
+  <div class="block js"><div class="cap"></div><pre><span class="kw">import</span> { test } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+test(<span class="str">'author a case comment'</span>, <span class="kw">async</span> ({ page }) => {
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/lightning/o/Case/list'</span>); <span class="cmt">// baseURL from config is prepended</span>
+<span class="kw">await</span> page.<span class="fn">pause</span>(); <span class="cmt">// <-- opens Inspector; press Record and click around to generate more steps</span>
+<span class="cmt">// ...continue writing assertions using the locators the Inspector suggests</span>
+});</pre></div>
+
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># PWDEBUG=1 forces the Inspector open for the whole run (implicit pause at start)</span>
+<span class="p">$</span> PWDEBUG=1 npx playwright test tests/case-flow.spec.ts</pre></div>
+
+  <div class="tip"><strong>Best of both —</strong> the <em>Explore</em> button in the Inspector lets you hover any element to get a robust locator without recording a click — great for Salesforce's deeply nested Lightning DOM.</div>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+  <div class="sec-head"><span class="num">05</span><h2>Run a test using a chosen profile</h2></div>
+  <p class="lede">Wire the persistent profile (or the main one) into your specs so <code class="inl">npx playwright test</code> starts already authenticated. Two levels: config-wide, or per-run via env var.</p>
+
+  <h3>Config-wide: point the runner at a profile</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// playwright.config.ts — a project that always uses the persistent profile</span>
+<span class="kw">import</span> { defineConfig } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export default</span> <span class="fn">defineConfig</span>({
+projects: [{
+name: <span class="str">'sf-authed'</span>,
+use: {
+channel: <span class="str">'chrome'</span>, <span class="cmt">// system Chrome</span>
+headless: <span class="kw">false</span>, <span class="cmt">// watch it drive the org</span>
+<span class="cmt">// launchPersistentContext isn't set directly here; use storageState instead:</span>
+storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// cookies saved from step 03</span>
+baseURL: process.env.SF_URL, <span class="cmt">// so goto('/lightning/...') works</span>
+},
+}],
+});</pre></div>
+
+  <h3>Per-run: choose the profile with an env var</h3>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Swap which profile/URL a run uses without touching code — pick test vs main here</span>
+<span class="p">$</span> SF_URL=https://my-sandbox.sandbox.my.salesforce.com npx playwright test --project=sf-authed</pre></div>
+
+  <h3>Full manual control (persistent profile inside a test)</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="kw">import</span> { test } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+<span class="kw">import</span> { chromium } <span class="kw">from</span> <span class="str">'playwright'</span>;
+
+<span class="cmt">// When you truly need the on-disk profile (not just storageState):</span>
+test(<span class="str">'runs in the sf-profile'</span>, <span class="kw">async</span> () => {
+<span class="kw">const</span> profile = process.env.PROFILE ?? <span class="str">'./.auth/sf-profile'</span>; <span class="cmt">// choose at run time</span>
+<span class="kw">const</span> ctx = <span class="kw">await</span> chromium.<span class="fn">launchPersistentContext</span>(profile, { channel: <span class="str">'chrome'</span> });
+<span class="kw">const</span> page = <span class="kw">await</span> ctx.<span class="fn">newPage</span>();
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/lightning/setup/SetupOneHome/home'</span>);
+<span class="kw">await</span> ctx.<span class="fn">close</span>();
+});</pre></div>
+
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Pick the profile at launch: main Chrome profile vs your test profile</span>
+<span class="p">$</span> PROFILE=<span class="str">"$HOME/Library/Application Support/Google/Chrome"</span> npx playwright test</pre></div>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+  <div class="sec-head"><span class="num">06</span><h2>Manual breaks &amp; time-based pauses</h2></div>
+  <p class="lede">Two different needs: a <strong>manual break</strong> to inspect state and step through, and a <strong>timed pause</strong> to wait out an animation or a slow Lightning redraw. Use the right one — avoid hard waits in real specs.</p>
+
+  <h3>Manual break — stop and take over</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="kw">await</span> page.<span class="fn">pause</span>(); <span class="cmt">// halts the script, opens Inspector; resume/step with its buttons</span></pre></div>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Run in headed + debug so page.pause() and stepping actually surface a UI</span>
+<span class="p">$</span> npx playwright test --headed --debug</pre></div>
+
+  <h3>Timed pause — wait a fixed duration</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// waitForTimeout is a HARD wait — fine for debugging/demos, avoid in committed tests</span>
+<span class="kw">await</span> page.<span class="fn">waitForTimeout</span>(<span class="str">3000</span>); <span class="cmt">// pause 3s (3000 ms) regardless of page state</span></pre></div>
+
+  <div class="note"><strong>Why avoid hard waits —</strong> a fixed 3s is either too short (flaky) or too long (slow). Prefer waiting for a <em>condition</em> (section 07). Reserve <code class="inl">waitForTimeout</code> for throwaway debugging.</div>
+
+  <h3>Slow the whole run down to watch it</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// slowMo adds a delay AFTER every action so you can follow along visually</span>
+<span class="kw">const</span> browser = <span class="kw">await</span> chromium.<span class="fn">launch</span>({ headless: <span class="kw">false</span>, slowMo: <span class="str">500</span> }); <span class="cmt">// 500ms between steps</span></pre></div>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Env-driven slow motion for a full test run without editing code</span>
+<span class="p">$</span> PWSLOWMO=500 npx playwright test --headed <span class="cmt"># (read PWSLOWMO in your config's launchOptions)</span></pre></div>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+  <div class="sec-head"><span class="num">07</span><h2>Keep waiting until a component appears</h2></div>
+  <p class="lede">Salesforce Lightning renders lazily — spinners, lazy tabs, streaming lists. Playwright's <strong>auto-waiting</strong> handles most of it, but for stubborn cases you poll until the element exists or a condition is true.</p>
+
+  <h3>Built-in auto-wait (prefer this)</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// Actions auto-wait up to the timeout for the element to be visible & actionable</span>
+<span class="kw">await</span> page.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: <span class="str">'New'</span> }).<span class="fn">click</span>({ timeout: <span class="str">30000</span> }); <span class="cmt">// waits ≤30s</span>
+
+<span class="cmt">// Explicitly wait for a locator to become visible before asserting</span>
+<span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">getByText</span>(<span class="str">'Case Number'</span>)).<span class="fn">toBeVisible</span>({ timeout: <span class="str">30000</span> });</pre></div>
+
+  <h3>Wait for a selector to attach/appear</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// waitForSelector polls the DOM until the element hits the requested state</span>
+<span class="kw">await</span> page.<span class="fn">waitForSelector</span>(<span class="str">'lightning-datatable'</span>, {
+  state: <span class="str">'visible'</span>,  <span class="cmt">// 'attached' | 'visible' | 'hidden' | 'detached'</span>
+  timeout: <span class="str">60000</span>,   <span class="cmt">// give slow orgs up to 60s</span>
+});</pre></div>
+
+  <h3>Poll a custom condition (true "keep looking" loop)</h3>
+  <div class="block js"><div class="cap"></div><pre><span class="cmt">// expect.poll re-runs the function on an interval until it passes or times out —</span>
+<span class="cmt">// ideal when "loaded" means a count/state, not just one element existing.</span>
+<span class="kw">await</span> <span class="fn">expect</span>.<span class="fn">poll</span>(<span class="kw">async</span> () => {
+  <span class="kw">return await</span> page.<span class="fn">locator</span>(<span class="str">'tbody tr'</span>).<span class="fn">count</span>(); <span class="cmt">// how many rows rendered so far</span>
+}, {
+  timeout: <span class="str">60000</span>,   <span class="cmt">// keep polling up to 60s</span>
+  intervals: [<span class="str">500</span>, <span class="str">1000</span>, <span class="str">2000</span>], <span class="cmt">// back-off: 0.5s, 1s, then every 2s</span>
+}).<span class="fn">toBeGreaterThan</span>(<span class="str">0</span>);  <span class="cmt">// condition: at least one row is present</span>
+
+<span class="cmt">// Or wait on a page-side JS predicate (e.g., a spinner gone)</span>
+<span class="kw">await</span> page.<span class="fn">waitForFunction</span>(() =>
+!document.<span class="fn">querySelector</span>(<span class="str">'.slds-spinner'</span>) <span class="cmt">// true once the spinner leaves the DOM</span>
+, <span class="kw">null</span>, { timeout: <span class="str">60000</span> });</pre></div>
+
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Raise the global action/expect timeout for an entire slow-org run</span>
+<span class="p">$</span> npx playwright test --timeout=90000 <span class="cmt"># 90s per test before it's marked failed</span></pre></div>
+
+  <div class="tip"><strong>Salesforce tip —</strong> the classic spinner selector is <code class="inl">.slds-spinner</code>; waiting for it to detach after a save is far more reliable than a fixed <code class="inl">waitForTimeout</code>. Also prefer role/label locators over CSS — Lightning regenerates class hashes.</div>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+  <div class="sec-head"><span class="num">08</span><h2>The config file, fully commented</h2></div>
+  <p class="lede"><code class="inl">playwright.config.ts</code> is the control panel: where tests live, timeouts, retries, which browsers/profiles, base URL, reporters, and the trace/screenshot/video capture that makes failures debuggable.</p>
+
+  <div class="block js"><div class="cap"></div><pre><span class="kw">import</span> { defineConfig, devices } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export default</span> <span class="fn">defineConfig</span>({
+testDir: <span class="str">'./tests'</span>, <span class="cmt">// where your \*.spec.ts files live</span>
+fullyParallel: <span class="kw">true</span>, <span class="cmt">// run tests in files concurrently for speed</span>
+forbidOnly: !!process.env.CI, <span class="cmt">// fail CI if a stray test.only() was committed</span>
+
+retries: process.env.CI ? <span class="str">2</span> : <span class="str">0</span>, <span class="cmt">// auto-retry flaky tests twice in CI, none locally</span>
+workers: process.env.CI ? <span class="str">2</span> : <span class="kw">undefined</span>, <span class="cmt">// limit parallelism in CI; use all cores locally</span>
+
+timeout: <span class="str">60_000</span>, <span class="cmt">// per-TEST budget (ms) — Salesforce is slow, be generous</span>
+expect: { timeout: <span class="str">15_000</span> }, <span class="cmt">// per-ASSERTION wait (toBeVisible etc.)</span>
+
+reporter: [ <span class="cmt">// how results are shown</span>
+[<span class="str">'html'</span>, { open: <span class="str">'never'</span> }], <span class="cmt">// rich report; view later with `show-report`</span>
+[<span class="str">'list'</span>], <span class="cmt">// live line-by-line output in the terminal</span>
+],
+
+use: { <span class="cmt">// DEFAULTS inherited by every test/project</span>
+baseURL: process.env.SF_URL, <span class="cmt">// lets you do page.goto('/lightning/...')</span>
+channel: <span class="str">'chrome'</span>, <span class="cmt">// system Chrome instead of bundled Chromium</span>
+headless: <span class="kw">false</span>, <span class="cmt">// see the browser (set true for CI)</span>
+
+    trace: <span class="str">'on-first-retry'</span>,   <span class="cmt">// record a full trace only when a test retries — gold for debugging</span>
+    screenshot: <span class="str">'only-on-failure'</span>, <span class="cmt">// capture the screen when a test fails</span>
+    video: <span class="str">'retain-on-failure'</span>,    <span class="cmt">// keep video of failed tests, discard passes</span>
+
+    actionTimeout: <span class="str">30_000</span>,       <span class="cmt">// max wait for a single click/fill before failing</span>
+    navigationTimeout: <span class="str">45_000</span>,   <span class="cmt">// max wait for a page load / redirect (SSO can be slow)</span>
+
+    viewport: { width: <span class="str">1440</span>, height: <span class="str">900</span> }, <span class="cmt">// consistent window size across machines</span>
+    storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// start authenticated (see section 03/05)</span>
+
+},
+
+projects: [ <span class="cmt">// named run configs — pick with --project=</span>
+{
+name: <span class="str">'chromium-authed'</span>,
+use: { ...devices[<span class="str">'Desktop Chrome'</span>] }, <span class="cmt">// preset UA/viewport for desktop Chrome</span>
+},
+{
+name: <span class="str">'setup'</span>, <span class="cmt">// a login project that writes sf-state.json first</span>
+testMatch: /global\.setup\.ts/, <span class="cmt">// only the auth-setup file</span>
+},
+],
+
+<span class="cmt">// Run a local server before tests (skip for a live org; handy for LWC Jest/dev)</span>
+<span class="cmt">// webServer: { command: 'npm run start', url: 'http://localhost:3000', reuseExistingServer: !process.env.CI },</span>
+});</pre></div>
+
+  <h3>The options you'll actually touch, ranked</h3>
+  <table>
+    <tr><th>Option</th><th>Why it matters for Salesforce</th></tr>
+    <tr><td><code>timeout</code> / <code>expect.timeout</code></td><td>Lightning is slow; too-low values are your #1 source of false failures.</td></tr>
+    <tr><td><code>trace</code></td><td>The single best debugging feature — a time-travel snapshot of DOM + network + console.</td></tr>
+    <tr><td><code>storageState</code></td><td>Skips the login+MFA dance on every test. Set once, reuse everywhere.</td></tr>
+    <tr><td><code>baseURL</code></td><td>Lets specs use relative paths; swap orgs by changing one env var.</td></tr>
+    <tr><td><code>retries</code></td><td>Absorbs genuine platform flakiness in CI without hiding real bugs (keep at 0 locally).</td></tr>
+    <tr><td><code>channel</code></td><td><code>'chrome'</code> matches what users actually run and plays nicer with Salesforce than bundled Chromium.</td></tr>
+    <tr><td><code>projects</code></td><td>Separate a one-time <em>login</em> project from your <em>test</em> projects; choose at runtime with <code>--project</code>.</td></tr>
+  </table>
+
+  <h3>Handy commands that read this config</h3>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Run everything the config points at, headed, on Chromium project</span>
+<span class="p">$</span> npx playwright test --headed --project=chromium-authed</pre></div>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Open the last HTML report (with traces you can click into)</span>
+<span class="p">$</span> npx playwright show-report</pre></div>
+  <div class="block sh"><div class="cap"></div><pre><span class="cmt"># Open a saved trace file to time-travel through a failed run</span>
+<span class="p">$</span> npx playwright show-trace test-results/**/trace.zip</pre></div>
+</section>
+
+</main>
+
+<footer>
+  Playwright for Salesforce · QA Field Guide — keep it green, keep it fast. // v1
+</footer>
+
+</body>
+</html>
