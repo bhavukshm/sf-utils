@@ -6,7 +6,7 @@ async function renderList() {
   const files = await res.json();
 
   if (files.length === 0) {
-    appEl.innerHTML = '<p>No markdown files found in <code>docs/</code>.</p>';
+    appEl.innerHTML = '<p>No markdown or HTML files found in <code>docs/</code>.</p>';
     return;
   }
 
@@ -26,7 +26,8 @@ async function renderDoc(name) {
   }
 
   const raw = await res.text();
-  const html = DOMPurify.sanitize(marked.parse(raw));
+  const isHtml = name.toLowerCase().endsWith('.html');
+  const html = DOMPurify.sanitize(isHtml ? raw : marked.parse(raw));
   appEl.innerHTML = `<p><a href="#/">&larr; Back</a></p><article class="markdown-body">${html}</article>`;
   appEl.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
 }

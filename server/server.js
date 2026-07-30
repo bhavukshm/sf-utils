@@ -34,25 +34,27 @@ fastify.addHook("onResponse", (request, reply, done) => {
   done();
 });
 
-async function listMarkdownFiles() {
+async function listDocFiles() {
   const entries = await fs.promises.readdir(docsDir, { withFileTypes: true });
   return entries
-    .filter(
-      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".md"),
-    )
+    .filter((entry) => {
+      if (!entry.isFile()) return false;
+      const name = entry.name.toLowerCase();
+      return name.endsWith(".md") || name.endsWith(".html");
+    })
     .map((entry) => entry.name)
     .sort();
 }
 
 fastify.get("/api/files", async (request, reply) => {
   reply.header("Cache-Control", "no-store");
-  return listMarkdownFiles();
+  return listDocFiles();
 });
 
 fastify.get("/api/content/:name", async (request, reply) => {
   // Only serve names that exactly match a file we just listed from docsDir -
   // this rules out path traversal without needing manual path-resolution checks.
-  const files = await listMarkdownFiles();
+  const files = await listDocFiles();
   if (!files.includes(request.params.name)) {
     reply.code(404);
     return { error: "Not found" };
