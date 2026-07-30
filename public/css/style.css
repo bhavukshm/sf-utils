@@ -26,6 +26,23 @@ main#app {
   padding: 0 1.5rem 3rem;
 }
 
+.doc-search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+}
+
+.doc-search:focus {
+  outline: none;
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.15);
+}
+
 .file-list {
   list-style: none;
   padding: 0;

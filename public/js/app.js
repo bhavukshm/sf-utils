@@ -13,7 +13,30 @@ async function renderList() {
   const items = files
     .map((name) => `<li><a href="#/view?file=${encodeURIComponent(name)}">${name}</a></li>`)
     .join('');
-  appEl.innerHTML = `<ul class="file-list">${items}</ul>`;
+  appEl.innerHTML = `
+    <input type="search" id="doc-search" class="doc-search" placeholder="Search docs..." autocomplete="off">
+    <ul class="file-list">${items}</ul>
+  `;
+
+  const searchEl = document.getElementById('doc-search');
+  const listItems = Array.from(appEl.querySelectorAll('.file-list li'));
+
+  searchEl.addEventListener('input', () => {
+    const term = searchEl.value.trim().toLowerCase();
+    listItems.forEach((li) => {
+      const name = li.textContent.toLowerCase();
+      li.style.display = name.includes(term) ? '' : 'none';
+    });
+  });
+
+  searchEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const firstVisible = listItems.find((li) => li.style.display !== 'none');
+    const link = firstVisible && firstVisible.querySelector('a');
+    if (link) window.location.hash = link.getAttribute('href').slice(1);
+  });
+
+  searchEl.focus();
 }
 
 async function renderDoc(name) {
