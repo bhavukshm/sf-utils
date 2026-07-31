@@ -24,17 +24,20 @@ Git manages files across three main areas in your local machine:
 3. **Local Repository (`.git`):** The persistent database containing all your project history, commit objects, trees, blobs, and branch references.
 
 ### 1.2 Git's Core Object Model
+
 Git is a content-addressable key-value filesystem. Everything is saved inside `.git/objects` hashed using SHA-1 (or SHA-256):
-* **Blob:** Stores raw file content (does not store file names or metadata).
-* **Tree:** Represents a directory structure. Maps filenames to blob hashes or sub-tree hashes.
-* **Commit:** Points to a root `Tree` hash, contains metadata (author, timestamp, commit message), and points to parent commit(s).
-* **Tag:** An explicit label pointing directly to a specific commit object.
+
+- **Blob:** Stores raw file content (does not store file names or metadata).
+- **Tree:** Represents a directory structure. Maps filenames to blob hashes or sub-tree hashes.
+- **Commit:** Points to a root `Tree` hash, contains metadata (author, timestamp, commit message), and points to parent commit(s).
+- **Tag:** An explicit label pointing directly to a specific commit object.
 
 ### 1.3 Attached HEAD vs. Detached HEAD
 
 `HEAD` is simply a pointer (file inside `.git/HEAD`) indicating your current active location in Git.
 
 #### Attached HEAD State (Normal State)
+
 In an attached state, `HEAD` points to a **branch reference** (e.g., `refs/heads/main`), which in turn points to the latest commit. When you make a new commit, the branch reference moves forward automatically along with `HEAD`.
 
 ```
@@ -42,6 +45,7 @@ HEAD ---> refs/heads/main ---> [Commit C] ---> [Commit B] ---> [Commit A]
 ```
 
 #### Detached HEAD State
+
 A **Detached HEAD** occurs when `HEAD` points directly to a **specific commit hash or tag**, rather than a branch name.
 
 ```
@@ -50,6 +54,7 @@ HEAD -------------------------> [Commit B] ---> [Commit A]
 ```
 
 ##### Practical Example: How you enter a Detached HEAD state
+
 ```bash
 # Checkout a specific commit hash directly
 git checkout a1b2c3d
@@ -59,6 +64,7 @@ git checkout v1.0.0
 ```
 
 ##### What happens if you commit in a Detached HEAD state?
+
 You can edit files and make commits. Git will create new commit objects. However, **no branch points to them**. If you switch back to `main`, those new commits become "orphaned" and will eventually be garbage collected by Git!
 
 ```bash
@@ -90,39 +96,47 @@ Scenario: Your local branch has commits `A -> B -> C`, but the remote repository
 Here are the standard strategies to resolve divergence, ordered by best practices.
 
 ### Strategy 1: Rebase (`pull --rebase`) — **BEST PRACTICE (Clean History)**
+
 Rebasing replays your local commits (`B`, `C`) on top of the remote commits (`K`). It keeps a perfectly linear history without unnecessary merge commits.
 
 ```bash
 # Fetch latest remote references and rebase local commits on top
 git pull --rebase origin main
 ```
-*Resulting History:* `A -> D -> K -> B' -> C'`
+
+_Resulting History:_ `A -> D -> K -> B' -> C'`
 
 ### Strategy 2: Explicit Merge (`pull --no-rebase`) — **PRESERVES EXACT TIMELINE**
+
 Merges remote changes into your local branch by creating a dedicated "Merge Commit". Good for public shared branches where exact history preservation is required.
 
 ```bash
 git pull origin main
 ```
-*Resulting History:* Creates a new merge commit `M` combining `C` and `K`.
+
+_Resulting History:_ Creates a new merge commit `M` combining `C` and `K`.
 
 ### Strategy 3: Interactive Rebase (`rebase -i`) — **CLEANUP BEFORE PUSHING**
+
 If your local commits `B` and `C` are messy work-in-progress (WIP) commits, clean them up before rebasing onto remote.
 
 ```bash
 git fetch origin
 git rebase -i origin/main
 ```
-*An editor opens allowing you to `squash` (combine), `fixup`, or `reword` your local commits before applying them onto `origin/main`.*
+
+_An editor opens allowing you to `squash` (combine), `fixup`, or `reword` your local commits before applying them onto `origin/main`._
 
 ### Strategy 4: Hard Reset (`reset --hard`) — **DISCARD LOCAL CHANGES**
+
 If local commits `B` and `C` were an invalid experiment and you want your local branch to match remote exactly.
 
 ```bash
 git fetch origin
 git reset --hard origin/main
 ```
-*Warning:* Destroys local uncommitted changes and unpushed commits `B` and `C`.
+
+_Warning:_ Destroys local uncommitted changes and unpushed commits `B` and `C`.
 
 ---
 
@@ -131,6 +145,7 @@ git reset --hard origin/main
 When you want to force remote to take your local commits (e.g., after an interactive rebase or squashing commits).
 
 ### Best Practice: Force with Lease (Safe)
+
 `--force-with-lease` checks if anyone else pushed commits to the remote branch while you were working. If someone did, it refuses to overwrite and prevents losing a colleague's work.
 
 ```bash
@@ -138,6 +153,7 @@ git push origin feature-branch --force-with-lease
 ```
 
 ### Destructive Override: Hard Force (Use with Extreme Caution)
+
 Overwrites the remote branch blindly, ignoring any new commits pushed by teammates.
 
 ```bash
@@ -151,6 +167,7 @@ git push origin feature-branch -f
 ## 4. Reverting & Undoing Changes
 
 ### 4.1 Unstaged Changes (Working Directory)
+
 Discard modifications in your current working directory.
 
 ```bash
@@ -165,6 +182,7 @@ git checkout -- path/to/file.ext
 ```
 
 ### 4.2 Staged Changes (Moving back to Unstaged)
+
 Unstage files without losing your code edits.
 
 ```bash
@@ -179,6 +197,7 @@ git reset HEAD path/to/file.ext
 ```
 
 ### 4.3 Clean Untracked Files
+
 Remove untracked files and folders (e.g., build artifacts, temporary logs).
 
 ```bash
@@ -190,6 +209,7 @@ git clean -fd
 ```
 
 ### 4.4 Local Committed Changes
+
 Undo local commits that haven't been pushed yet.
 
 ```bash
@@ -204,6 +224,7 @@ git reset --hard HEAD~1
 ```
 
 ### 4.5 Published Remote Commits
+
 If a commit has already been pushed to a shared remote, **never use `git reset`**. Use `git revert` to create a new commit that safely reverses the targeted commit.
 
 ```bash
@@ -219,26 +240,28 @@ git push origin main
 ## 5. Merging & Conflict Resolution
 
 ### 5.1 Resolving Merge Conflicts Step-by-Step
+
 1. **Trigger Merge/Rebase:**
-   ```bash
-   git merge feature-branch
-   ```
+    ```bash
+    git merge feature-branch
+    ```
 2. **Identify Conflicts:**
-   ```bash
-   git status
-   ```
-   *(Files with conflicts are listed under "Unmerged paths")*
+    ```bash
+    git status
+    ```
+    _(Files with conflicts are listed under "Unmerged paths")_
 3. **Open and Resolve:** Edit conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) in files.
 4. **Stage Resolved Files:**
-   ```bash
-   git add path/to/resolved-file.ext
-   ```
+    ```bash
+    git add path/to/resolved-file.ext
+    ```
 5. **Complete Process:**
-   ```bash
-   git merge --continue   # Or 'git commit' for merge, 'git rebase --continue' for rebase
-   ```
+    ```bash
+    git merge --continue   # Or 'git commit' for merge, 'git rebase --continue' for rebase
+    ```
 
 ### 5.2 Aborting a Stuck Merge or Rebase
+
 If conflict resolution gets too complex and you want to start fresh:
 
 ```bash
@@ -248,6 +271,7 @@ git rebase --abort
 ```
 
 ### 5.3 Cherry-Picking
+
 Copy specific commits from another branch onto your current branch without merging the whole branch.
 
 ```bash
@@ -262,6 +286,7 @@ git cherry-pick A_hash..B_hash
 ```
 
 ### 5.4 Automatic Conflict Memory (`rerere`)
+
 Enable **rerere** (Reuse Recorded Resolution) so Git remembers how you resolved a conflict and auto-resolves it next time it occurs.
 
 ```bash
@@ -273,6 +298,7 @@ git config --global rerere.enabled true
 ## 6. Comparing Codebases, Files, and Organizations
 
 ### 6.1 Comparing Files & Diffing Tools
+
 ```bash
 # Compare working directory against staging area
 git diff
@@ -287,19 +313,22 @@ git diff commit1_hash commit2_hash -- path/to/file.ext
 git difftool commit1_hash commit2_hash -- path/to/file.ext
 ```
 
-*Configuring Meld as your default diff tool:*
+_Configuring Meld as your default diff tool:_
+
 ```bash
 git config --global diff.tool meld
 git config --global difftool.prompt false
 ```
 
 ### 6.2 Comparing Specific Folders
+
 ```bash
 # Diff changes inside a specific folder between two branches/commits
 git diff branchA branchB -- src/components/
 ```
 
 ### 6.3 Finding Missing or Changed Files Between Commits
+
 ```bash
 # Display summary status of files changed between two commits
 # (A = Added, M = Modified, D = Deleted)
@@ -313,6 +342,7 @@ git diff --diff-filter=A --name-only commit1_hash commit2_hash
 ```
 
 ### 6.4 Comparing Two Different Repositories / Orgs (e.g., `dev` vs `full`)
+
 When managing two separate Git repositories/orgs (e.g., a lightweight `dev` org vs complete `full` org repository):
 
 ```bash
@@ -337,6 +367,7 @@ git diff origin/main full_org/main -- force-app/main/default/classes/
 ## 7. Daily Developer Toolkit & Real-World Examples
 
 ### 7.1 Stashing (Temporary Storage)
+
 **Real-world scenario:** You are halfway through building a feature when an urgent production bug fix is assigned. You don't want to make an incomplete commit.
 
 ```bash
@@ -359,6 +390,7 @@ git stash show -p stash@{0}
 ```
 
 ### 7.2 The Panic Button: `git reflog`
+
 **Real-world scenario:** You accidentally ran `git reset --hard` and lost 3 hours of committed work, or deleted a branch by mistake.
 
 Git records every movement of `HEAD` in the reference log (`reflog`).
@@ -376,6 +408,7 @@ git checkout -b recovered-branch c3b2a1a
 ```
 
 ### 7.3 Log & History Inspection
+
 ```bash
 # Beautiful visual branch graph in terminal
 git log --graph --oneline --all --decorate
@@ -388,6 +421,7 @@ git log --follow -p -- path/to/file.ext
 ```
 
 ### 7.4 Line-by-Line Archaeology: `git blame`
+
 Find out who modified a line of code and in which commit.
 
 ```bash
@@ -395,6 +429,7 @@ git blame -L 40,60 path/to/file.ext
 ```
 
 ### 7.5 Housekeeping & Remote Cleaning
+
 ```bash
 # Delete local branch safely
 git branch -d feature-branch
@@ -413,15 +448,15 @@ git remote prune origin
 
 ## 8. Summary Command Cheat Sheet
 
-| Task | Command |
-| :--- | :--- |
-| **Check State** | `git status` |
-| **Unstage File** | `git restore --staged <file>` |
-| **Discard Unstaged Edits** | `git restore <file>` |
-| **Undo Last Commit (Keep Edits)** | `git reset --soft HEAD~1` |
-| **Safely Revert Remote Commit** | `git revert <commit-hash>` |
-| **Sync with Rebase (Best Practice)** | `git pull --rebase origin main` |
-| **Safe Force Push** | `git push origin <branch> --force-with-lease` |
-| **Compare Repos/Branches** | `git diff branchA branchB --name-status` |
-| **Recover Deleted Commits** | `git reflog` then `git checkout <hash>` |
-| **Temporarily Save Work** | `git stash -u` & `git stash pop` |
+| Task                                 | Command                                       |
+| :----------------------------------- | :-------------------------------------------- |
+| **Check State**                      | `git status`                                  |
+| **Unstage File**                     | `git restore --staged <file>`                 |
+| **Discard Unstaged Edits**           | `git restore <file>`                          |
+| **Undo Last Commit (Keep Edits)**    | `git reset --soft HEAD~1`                     |
+| **Safely Revert Remote Commit**      | `git revert <commit-hash>`                    |
+| **Sync with Rebase (Best Practice)** | `git pull --rebase origin main`               |
+| **Safe Force Push**                  | `git push origin <branch> --force-with-lease` |
+| **Compare Repos/Branches**           | `git diff branchA branchB --name-status`      |
+| **Recover Deleted Commits**          | `git reflog` then `git checkout <hash>`       |
+| **Temporarily Save Work**            | `git stash -u` & `git stash pop`              |
