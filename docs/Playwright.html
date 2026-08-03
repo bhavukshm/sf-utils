@@ -383,13 +383,16 @@
                     <li><a href="#s1">Setup &amp; the two CLIs</a></li>
                     <li><a href="#s2">Writing tests: locators, actions &amp; assertions</a></li>
                     <li><a href="#s3">Recording with codegen: basics &amp; flags</a></li>
-                    <li><a href="#s4">Launch with your real Chrome profile</a></li>
-                    <li><a href="#s5">Reusable persistent test profile</a></li>
-                    <li><a href="#s6">Editing code while recording</a></li>
-                    <li><a href="#s7">Running tests: paths, filters &amp; modes</a></li>
-                    <li><a href="#s8">Manual breaks &amp; timed pauses</a></li>
-                    <li><a href="#s9">Keep waiting until a component appears</a></li>
-                    <li><a href="#s10">The config file, explained</a></li>
+                    <li><a href="#s4">Codegen recipes for logged-in sessions</a></li>
+                    <li><a href="#s5">Launch with your real Chrome profile</a></li>
+                    <li><a href="#s6">Reusable persistent test profile</a></li>
+                    <li><a href="#s7">Editing code while recording</a></li>
+                    <li><a href="#s8">Running tests: paths, filters &amp; modes</a></li>
+                    <li><a href="#s9">launchOptions — the browser process</a></li>
+                    <li><a href="#s10">Context &amp; emulation options in <code>use</code></a></li>
+                    <li><a href="#s11">Manual breaks &amp; timed pauses</a></li>
+                    <li><a href="#s12">Keep waiting until a component appears</a></li>
+                    <li><a href="#s13">The config file, explained</a></li>
                 </ol>
             </div>
         </nav>
@@ -607,7 +610,7 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
                     <strong>Test isolation —</strong> every test gets a brand-new <code class="inl">page</code> and
                     browser context — "equivalent to a brand new browser profile." Nothing (cookies, local storage)
                     leaks between tests unless you deliberately load a saved <code class="inl">storageState</code>
-                    (sections 05/07/10) or a persistent profile (section 05).
+                    (sections 04/06/13) or a persistent profile (section 06).
                 </div>
             </section>
 
@@ -619,8 +622,8 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
                 </div>
                 <p class="lede">
                     <code class="inl">codegen</code> opens a browser, watches you click around, and writes the
-                    locators/actions for you. Sections 05/06 show it wired up with a saved Salesforce login — this is
-                    the plain version and the flags that go with it.
+                    locators/actions for you. Section 04 shows it wired up with a saved Salesforce login — this is the
+                    plain version and the flags that go with it.
                 </p>
 
                 <h3>Bare minimum</h3>
@@ -646,11 +649,31 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
                         <td>Write the generated code straight to a file instead of the preview pane.</td>
                     </tr>
                     <tr>
-                        <td><code>--target=javascript</code></td>
+                        <td><code>--target=&lt;lang&gt;</code></td>
                         <td>
-                            Language of the generated code (<code>javascript</code>, <code>python</code>,
-                            <code>java</code>, <code>csharp</code>...).
+                            Language/flavour of the generated code:
+                            <code>playwright-test</code> (default — a full spec with <code>test(...)</code>),
+                            <code>javascript</code> (a plain script with <code>chromium.launch()</code>),
+                            <code>python</code>, <code>python-pytest</code>, <code>java</code>, <code>csharp</code>...
                         </td>
+                    </tr>
+                    <tr>
+                        <td><code>-b, --browser=&lt;engine&gt;</code></td>
+                        <td>
+                            Which engine to record in: <code>chromium</code> (default), <code>firefox</code>,
+                            <code>webkit</code>. Independent of <code>--channel</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>--test-id-attribute=data-qa</code></td>
+                        <td>
+                            Tells the recorder which attribute counts as a test id, so it emits
+                            <code>getByTestId()</code> instead of a brittle CSS chain. Set it to whatever your LWCs use.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>--timeout=&lt;ms&gt;</code></td>
+                        <td>Per-operation timeout for the recorder's own navigations (default 180000).</td>
                     </tr>
                     <tr>
                         <td><code>--device="iPhone 13"</code></td>
@@ -677,6 +700,10 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
                         <td>Force the browser's timezone.</td>
                     </tr>
                     <tr>
+                        <td><code>--user-agent="..."</code></td>
+                        <td>Override the UA string the browser sends.</td>
+                    </tr>
+                    <tr>
                         <td><code>--save-storage=auth.json</code></td>
                         <td>After you log in, save cookies/local storage to a JSON file.</td>
                     </tr>
@@ -685,10 +712,39 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
                         <td>Start the recorder already logged in, using a file saved above.</td>
                     </tr>
                     <tr>
+                        <td><code>--save-har=net.har</code> / <code>--save-har-glob="**/api/**"</code></td>
+                        <td>
+                            Record every request into a HAR file (optionally only URLs matching the glob) so you can
+                            replay or mock that traffic later with <code>page.routeFromHAR()</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>--ignore-https-errors</code></td>
+                        <td>Accept self-signed/inspected certificates — needed behind some corporate TLS proxies.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--proxy-server=http://host:8080</code> / <code>--proxy-bypass=".corp,localhost"</code></td>
+                        <td>Route the recorded browser through a proxy, with an optional no-proxy list.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--block-service-workers</code></td>
+                        <td>
+                            Stop service workers from registering. Useful when a cached Lightning service worker serves
+                            stale assets mid-recording.
+                        </td>
+                    </tr>
+                    <tr>
                         <td><code>--channel=chrome</code> / <code>--user-data-dir=&lt;path&gt;</code></td>
-                        <td>Use a real/reusable Chrome profile instead of bundled Chromium — see sections 04-05.</td>
+                        <td>Use a real/reusable Chrome profile instead of bundled Chromium — see sections 05-06.</td>
                     </tr>
                 </table>
+                <div class="note">
+                    <strong>Where these flags come from —</strong> most of them are just CLI spellings of the same
+                    <em>context options</em> you can set in <code class="inl">playwright.config.ts</code> under
+                    <code class="inl">use</code> (section 10). <code class="inl">--channel</code>,
+                    <code class="inl">--user-data-dir</code> and <code class="inl">--proxy-server</code> map to
+                    <em>launch options</em> instead (section 09).
+                </div>
 
                 <div class="block sh">
                     <div class="cap"></div>
@@ -707,6 +763,152 @@ test(<span class="str">'closes a case'</span>, <span class="kw">async</span> ({ 
             <section id="s4">
                 <div class="sec-head">
                     <span class="num">04</span>
+                    <h2>Codegen recipes for logged-in sessions</h2>
+                </div>
+                <p class="lede">
+                    Plain <code class="inl">codegen</code> starts from a blank temp profile, so you meet the login page
+                    and MFA every single time. These are the ways to record <em>inside</em> an already-authenticated
+                    Salesforce session — pick the one that matches how long you need the session to live.
+                </p>
+
+                <table>
+                    <tr>
+                        <th>Recipe</th>
+                        <th>Session lives in</th>
+                        <th>Reach for it when</th>
+                    </tr>
+                    <tr>
+                        <td>A — save/load storage state</td>
+                        <td>One JSON file</td>
+                        <td>Default choice. Same file feeds <code>storageState</code> in your config.</td>
+                    </tr>
+                    <tr>
+                        <td>B — persistent profile dir</td>
+                        <td>A Chrome profile folder</td>
+                        <td>You need extensions, or MFA "remember this device" to stick.</td>
+                    </tr>
+                    <tr>
+                        <td>C — attach to running Chrome</td>
+                        <td>The browser you already have open</td>
+                        <td>You're mid-investigation in an org and want to record from here.</td>
+                    </tr>
+                    <tr>
+                        <td>D — pause inside a test</td>
+                        <td>The test's own context</td>
+                        <td>Extending a spec that already logs itself in (section 07).</td>
+                    </tr>
+                </table>
+
+                <h3>Recipe A — record the login once, replay it forever</h3>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># Step 1: log in by hand (incl. MFA), then CLOSE the window — cookies + localStorage land in auth.json</span>
+<span class="p">$</span> npx playwright codegen --save-storage=.auth/sf-state.json https://test.salesforce.com</pre>
+                </div>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># Step 2: every later recording starts INSIDE the org, and writes a real spec file</span>
+<span class="cmt">#   --load-storage       restore that saved session (no login page)</span>
+<span class="cmt">#   --target             emit a test(...) block instead of a bare script</span>
+<span class="cmt">#   --test-id-attribute  prefer getByTestId over CSS when the attribute exists</span>
+<span class="cmt">#   --viewport-size      record at the size CI will run at</span>
+<span class="cmt">#   -o                   write straight into the repo</span>
+<span class="p">$</span> npx playwright codegen --load-storage=.auth/sf-state.json --target=playwright-test --test-id-attribute=data-qa --viewport-size=<span class="str">"1440,900"</span> -o tests/case-flow.spec.ts https://my-sandbox.sandbox.my.salesforce.com/lightning/o/Case/list</pre>
+                </div>
+                <p>
+                    That same <code class="inl">.auth/sf-state.json</code> is exactly what
+                    <code class="inl">use: { storageState: '.auth/sf-state.json' }</code> loads at run time — record and
+                    run share one session artifact.
+                </p>
+
+                <h3>Recipe B — record inside the persistent profile</h3>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># --user-data-dir keeps the whole profile (cookies, MFA device trust, extensions) on disk</span>
+<span class="p">$</span> npx playwright codegen --channel=chrome --user-data-dir=./.auth/sf-profile -o tests/new-flow.spec.ts https://my-sandbox.sandbox.my.salesforce.com</pre>
+                </div>
+                <p>
+                    <code class="inl">--channel=chrome</code> swaps bundled Chromium for the Chrome you actually have
+                    installed; <code class="inl">--user-data-dir</code> is what makes the session survive between runs.
+                    Full setup in section 06.
+                </p>
+
+                <h3>Recipe C — attach the recorder to a Chrome you already have open</h3>
+                <p>
+                    The CLI can't attach to a live browser, but a five-line script can:
+                    <code class="inl">connectOverCDP</code> joins the running Chrome, and
+                    <code class="inl">page.pause()</code> opens the Inspector with its <strong>Record</strong> button —
+                    so you're recording in a tab that's already logged in, with your extensions and history intact.
+                </p>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># 1. Start Chrome with a debugging port (quit all other Chrome windows first)</span>
+<span class="p">$</span> <span class="str">"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"</span> --remote-debugging-port=9222 --user-data-dir=./.auth/sf-profile
+<span class="cmt"># Windows: "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir=C:\pw-profile</span></pre>
+                </div>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="kw">import</span> { chromium } <span class="kw">from</span> <span class="str">'playwright'</span>;
+
+<span class="kw">const</span> browser = <span class="kw">await</span> chromium.<span class="fn">connectOverCDP</span>(<span class="str">'http://localhost:9222'</span>); <span class="cmt">// join, don't launch</span>
+<span class="kw">const</span> ctx = browser.<span class="fn">contexts</span>()[<span class="str">0</span>]; <span class="cmt">// the profile's existing context (already logged in)</span>
+<span class="kw">const</span> page = ctx.<span class="fn">pages</span>()[<span class="str">0</span>] ?? <span class="kw">await</span> ctx.<span class="fn">newPage</span>(); <span class="cmt">// grab the open tab</span>
+<span class="kw">await</span> page.<span class="fn">pause</span>(); <span class="cmt">// Inspector opens -> hit Record and click around</span></pre>
+                </div>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># PWDEBUG=1 makes sure the Inspector window actually appears</span>
+<span class="p">$</span> PWDEBUG=1 node attach.mjs</pre>
+                </div>
+                <div class="note">
+                    <strong>CDP caveat —</strong> when you connect over CDP, Playwright did not start the browser, so
+                    <code class="inl">launchOptions</code> (headless, args, slowMo, channel…) are ignored — the flags on
+                    the <code class="inl">chrome.exe</code> command line are the only ones that count.
+                </div>
+
+                <h3>Recipe D — record the network, then replay it offline</h3>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># Capture only Salesforce's Aura/UI-API calls while you click through the flow</span>
+<span class="p">$</span> npx playwright codegen --load-storage=.auth/sf-state.json --save-har=.har/case.har --save-har-glob=<span class="str">"**/{aura,services/data}/**"</span> https://my-sandbox.sandbox.my.salesforce.com</pre>
+                </div>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="cmt">// Serve those recorded responses instead of hitting the org — fast, deterministic UI tests</span>
+<span class="kw">await</span> page.<span class="fn">routeFromHAR</span>(<span class="str">'.har/case.har'</span>, {
+  url: <span class="str">'**/{aura,services/data}/**'</span>, <span class="cmt">// only intercept what you captured</span>
+  update: <span class="kw">false</span>, <span class="cmt">// true = re-record the HAR on this run instead of replaying</span>
+  notFound: <span class="str">'abort'</span>, <span class="cmt">// 'fallback' would let un-recorded calls hit the real org</span>
+});</pre>
+                </div>
+
+                <h3>Other one-off launchers</h3>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># open = same browser as codegen, minus the recorder — a quick authenticated poke at the org</span>
+<span class="p">$</span> npx playwright open --load-storage=.auth/sf-state.json https://my-sandbox.sandbox.my.salesforce.com
+
+<span class="cmt"># Emulate a device while recording (viewport + UA + touch in one flag)</span>
+<span class="p">$</span> npx playwright codegen --device=<span class="str">"iPhone 14"</span> --load-storage=.auth/sf-state.json https://my-sandbox.sandbox.my.salesforce.com
+
+<span class="cmt"># Headless one-shot artifacts — handy for a bug report</span>
+<span class="p">$</span> npx playwright screenshot --full-page --load-storage=.auth/sf-state.json <span class="str">"https://…/lightning/o/Case/list"</span> case-list.png
+<span class="p">$</span> npx playwright pdf <span class="str">"https://…/apex/MyVisualforcePage"</span> page.pdf</pre>
+                </div>
+
+                <div class="note">
+                    <strong>Sessions expire —</strong> a saved storage state is only as good as the org's session
+                    timeout (often 2h–8h) and dies on password reset or an admin session kill. When a "logged-in" run
+                    suddenly lands on the login page, re-run the Recipe A step-1 command. Keep
+                    <code class="inl">.auth/</code> and <code class="inl">*.har</code> out of Git — both contain live
+                    tokens.
+                </div>
+            </section>
+
+            <!-- 5 -->
+            <section id="s5">
+                <div class="sec-head">
+                    <span class="num">05</span>
                     <h2>Launch Chrome with your real (main) profile</h2>
                 </div>
                 <p class="lede">
@@ -772,10 +974,10 @@ args: [<span class="str">'--profile-directory=Default'</span>], <span class="cmt
                 </div>
             </section>
 
-            <!-- 5 -->
-            <section id="s5">
+            <!-- 6 -->
+            <section id="s6">
                 <div class="sec-head">
-                    <span class="num">05</span>
+                    <span class="num">06</span>
                     <h2>A reusable, persistent test profile</h2>
                 </div>
                 <p class="lede">
@@ -829,10 +1031,10 @@ args: [<span class="str">'--profile-directory=Default'</span>], <span class="cmt
                 </div>
             </section>
 
-            <!-- 6 -->
-            <section id="s6">
+            <!-- 7 -->
+            <section id="s7">
                 <div class="sec-head">
-                    <span class="num">06</span>
+                    <span class="num">07</span>
                     <h2>Can you edit code <em>while</em> recording?</h2>
                 </div>
                 <p class="lede">
@@ -882,16 +1084,16 @@ test(<span class="str">'author a case comment'</span>, <span class="kw">async</s
                 </div>
             </section>
 
-            <!-- 7 -->
-            <section id="s7">
+            <!-- 8 -->
+            <section id="s8">
                 <div class="sec-head">
-                    <span class="num">07</span>
+                    <span class="num">08</span>
                     <h2>Running tests: paths, filters &amp; modes</h2>
                 </div>
                 <p class="lede">
                     Beyond plain <code class="inl">npx playwright test</code>, the runner takes a path, a title, a line
-                    number, or a browser/project — and can be combined with any profile technique from sections 04-06,
-                    or the profile-backed project defined in section 10.
+                    number, or a browser/project — and can be combined with any profile technique from sections 04-07,
+                    or the profile-backed project defined in section 13.
                 </p>
 
                 <h3>Run one file (pass the path)</h3>
@@ -902,7 +1104,7 @@ test(<span class="str">'author a case comment'</span>, <span class="kw">async</s
                 </div>
                 <div class="block sh">
                     <div class="cap"></div>
-                    <pre><span class="cmt"># Same file, but run it against the authenticated sf-authed project (section 10)</span>
+                    <pre><span class="cmt"># Same file, but run it against the authenticated sf-authed project (section 13)</span>
 <span class="p">$</span> npx playwright test tests/case-flow.spec.ts --project=sf-authed</pre>
                 </div>
 
@@ -957,7 +1159,7 @@ use: {
 channel: <span class="str">'chrome'</span>, <span class="cmt">// system Chrome</span>
 headless: <span class="kw">false</span>, <span class="cmt">// watch it drive the org</span>
 <span class="cmt">// launchPersistentContext isn't set directly here; use storageState instead:</span>
-storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// cookies saved from step 05</span>
+storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// cookies saved in section 04/06</span>
 baseURL: process.env.SF_URL, <span class="cmt">// so goto('/lightning/...') works</span>
 },
 }],
@@ -1034,12 +1236,527 @@ test(<span class="str">'runs in the sf-profile'</span>, <span class="kw">async</
                     <pre><span class="cmt"># Only re-runs the tests that failed last time — fast feedback after a fix</span>
 <span class="p">$</span> npx playwright test --last-failed --project=sf-authed</pre>
                 </div>
+
+                <h3>The rest of the runner flags</h3>
+                <table>
+                    <tr>
+                        <th>Flag</th>
+                        <th>What it does</th>
+                    </tr>
+                    <tr>
+                        <td><code>--list</code></td>
+                        <td>Print the tests that <em>would</em> run and exit — the safe way to check a filter.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--workers=1</code></td>
+                        <td>
+                            Run serially. Do this when several tests touch the same Salesforce record and trip over each
+                            other, or when one licensed user can't hold parallel sessions.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>--repeat-each=10</code></td>
+                        <td>Run each selected test N times — the flakiness detector.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--retries=2</code></td>
+                        <td>Override the config's retry count for this run only.</td>
+                    </tr>
+                    <tr>
+                        <td><code>-x</code> / <code>--max-failures=3</code></td>
+                        <td>Stop after the first (or Nth) failure instead of grinding through the suite.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--grep-invert="@slow"</code></td>
+                        <td>The opposite of <code>-g</code> — skip everything matching. Pairs well with <code>@tags</code> in test titles.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--only-changed=master</code></td>
+                        <td>Run only specs changed versus that git ref — a cheap pre-push smoke run.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--shard=1/3</code></td>
+                        <td>Split the suite across 3 CI machines; merge later with <code>merge-reports</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--trace=on</code> / <code>--video=on</code> / <code>--screenshot=on</code></td>
+                        <td>Force capture for this run even if the config only captures on failure.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--reporter=line,html</code></td>
+                        <td>Override reporters for one run (comma-separated).</td>
+                    </tr>
+                    <tr>
+                        <td><code>--timeout=90000</code> / <code>--global-timeout=1800000</code></td>
+                        <td>Per-test budget / hard ceiling for the whole run.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--config=playwright.uat.ts</code></td>
+                        <td>Point at a different config — the clean way to keep per-org settings apart.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--update-snapshots</code></td>
+                        <td>Accept current output as the new baseline for visual/snapshot assertions.</td>
+                    </tr>
+                </table>
+
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># Flakiness hunt: one worker, no retries, same test 10x, stop at the first red</span>
+<span class="p">$</span> npx playwright test -g <span class="str">"create a new case"</span> --repeat-each=10 --retries=0 --workers=1 -x --trace=on</pre>
+                </div>
+
+                <h3>Env vars that change a run</h3>
+                <table>
+                    <tr>
+                        <th>Variable</th>
+                        <th>Effect</th>
+                    </tr>
+                    <tr>
+                        <td><code>PWDEBUG=1</code></td>
+                        <td>Opens the Inspector, forces headed, and disables timeouts so you can poke around freely.</td>
+                    </tr>
+                    <tr>
+                        <td><code>PWDEBUG=console</code></td>
+                        <td>
+                            Headed run with the <code>playwright</code> object exposed in DevTools console — try
+                            locators live against the real Lightning page.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>DEBUG=pw:api</code></td>
+                        <td>Logs every Playwright call and what it waited for — best tool for "why did this hang?".</td>
+                    </tr>
+                    <tr>
+                        <td><code>CI=1</code></td>
+                        <td>Flips the <code>process.env.CI</code> branches in your config (retries, workers, forbidOnly).</td>
+                    </tr>
+                    <tr>
+                        <td><code>PLAYWRIGHT_BROWSERS_PATH</code></td>
+                        <td>Where browser binaries live — set it when a locked-down machine can't write to the default cache.</td>
+                    </tr>
+                </table>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># Windows PowerShell sets env vars differently than bash</span>
+<span class="p">$</span> $env:PWDEBUG=<span class="str">"1"</span>; npx playwright test tests/case-flow.spec.ts <span class="cmt"># PowerShell</span>
+<span class="p">$</span> PWDEBUG=1 npx playwright test tests/case-flow.spec.ts <span class="cmt"># bash / zsh / Git Bash</span></pre>
+                </div>
             </section>
 
-            <!-- 8 -->
-            <section id="s8">
+            <!-- 9 -->
+            <section id="s9">
                 <div class="sec-head">
-                    <span class="num">08</span>
+                    <span class="num">09</span>
+                    <h2><code>launchOptions</code> — controlling the browser process</h2>
+                </div>
+                <p class="lede">
+                    Everything so far configured the <em>page</em>. <code class="inl">launchOptions</code> configures the
+                    <em>browser executable</em> Playwright starts: which binary, which command-line switches, how it's
+                    sandboxed, where downloads go. Set it once in <code class="inl">use</code> and every test inherits
+                    it.
+                </p>
+
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="cmt">// playwright.config.ts — launchOptions sits INSIDE use, next to the context options</span>
+<span class="kw">import</span> { defineConfig } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">export default</span> <span class="fn">defineConfig</span>({
+use: {
+channel: <span class="str">'chrome'</span>, <span class="cmt">// which Chrome build (also a launch option, hoisted for convenience)</span>
+headless: <span class="kw">false</span>, <span class="cmt">// same deal — hoisted out of launchOptions</span>
+
+    launchOptions: {
+      slowMo: <span class="str">300</span>,                <span class="cmt">// pause 300ms after EVERY action — watch the flow, catch mis-clicks</span>
+      timeout: <span class="str">60_000</span>,            <span class="cmt">// how long to wait for the browser process itself to boot (0 = forever)</span>
+      downloadsPath: <span class="str">'./downloads'</span>, <span class="cmt">// where accepted downloads (report exports) are written</span>
+      tracesDir: <span class="str">'./traces'</span>,       <span class="cmt">// raw trace scratch dir</span>
+      env: { LANG: <span class="str">'en_US.UTF-8'</span> }, <span class="cmt">// env vars handed to the browser process</span>
+      chromiumSandbox: <span class="kw">false</span>,      <span class="cmt">// required inside most Docker/CI containers</span>
+
+      args: [                       <span class="cmt">// raw Chromium switches — see the table below</span>
+        <span class="str">'--start-maximized'</span>,
+        <span class="str">'--disable-dev-shm-usage'</span>,
+        <span class="str">'--disable-blink-features=AutomationControlled'</span>,
+      ],
+      ignoreDefaultArgs: [<span class="str">'--hide-scrollbars'</span>], <span class="cmt">// drop a switch Playwright normally passes</span>
+    },
+
+    viewport: <span class="kw">null</span>, <span class="cmt">// REQUIRED for --start-maximized to actually fill the screen</span>
+
+},
+});</pre>
+                </div>
+
+                <h3>Every launch option, and when you'd touch it</h3>
+                <table>
+                    <tr>
+                        <th>Option</th>
+                        <th>What it does</th>
+                    </tr>
+                    <tr>
+                        <td><code>headless</code></td>
+                        <td>
+                            <code>true</code> = no window (fast, CI default). <code>false</code> = a real window you can
+                            watch. Some SSO/IdP flows behave differently headless — if a login works headed but not
+                            headless, this is your first suspect.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>channel</code></td>
+                        <td>
+                            Use an installed browser build instead of bundled Chromium:
+                            <code>'chrome'</code>, <code>'chrome-beta'</code>, <code>'msedge'</code>,
+                            <code>'msedge-beta'</code>, <code>'chromium'</code>. Matches what your users run.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>executablePath</code></td>
+                        <td>
+                            Absolute path to a specific binary — for a locked corporate Chrome install or a pinned
+                            version on a build agent. Overrides <code>channel</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>args</code></td>
+                        <td>Extra command-line switches passed straight to the browser (table below).</td>
+                    </tr>
+                    <tr>
+                        <td><code>ignoreDefaultArgs</code></td>
+                        <td>
+                            <code>true</code> drops <em>all</em> of Playwright's default switches (rarely what you want);
+                            an array drops just the listed ones, e.g. to keep the "Chrome is being controlled by
+                            automated software" infobar.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>slowMo</code></td>
+                        <td>Milliseconds to wait after each operation. Demo/debug only — never commit it enabled.</td>
+                    </tr>
+                    <tr>
+                        <td><code>timeout</code></td>
+                        <td>Budget for the browser to start (default 30 s). Raise it on slow/loaded VMs; <code>0</code> disables.</td>
+                    </tr>
+                    <tr>
+                        <td><code>proxy</code></td>
+                        <td>
+                            <code>{ server, bypass, username, password }</code> — route traffic through a corporate
+                            proxy. <code>bypass</code> is a comma-separated no-proxy list.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>downloadsPath</code></td>
+                        <td>
+                            Directory for downloaded files. Without it, downloads go to a temp dir that's deleted when
+                            the browser closes — the usual reason a report-export assertion can't find its file.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>tracesDir</code></td>
+                        <td>Where raw traces are staged before being zipped into the test output.</td>
+                    </tr>
+                    <tr>
+                        <td><code>env</code></td>
+                        <td>Environment variables for the browser process (locale, proxy vars, custom flags).</td>
+                    </tr>
+                    <tr>
+                        <td><code>chromiumSandbox</code></td>
+                        <td>
+                            Set <code>false</code> in containers that can't grant the sandbox its privileges — the
+                            supported alternative to sprinkling <code>--no-sandbox</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>handleSIGINT</code> / <code>handleSIGTERM</code> / <code>handleSIGHUP</code></td>
+                        <td>Whether the browser closes when the node process is signalled. Turn off if you want the window to survive a Ctrl-C.</td>
+                    </tr>
+                    <tr>
+                        <td><code>firefoxUserPrefs</code></td>
+                        <td>Firefox-only <code>about:config</code> preferences, as a key/value object.</td>
+                    </tr>
+                    <tr>
+                        <td><code>devtools</code></td>
+                        <td>Chromium-only: auto-open DevTools for each tab. Deprecated — prefer <code>--debug</code>/UI mode.</td>
+                    </tr>
+                </table>
+
+                <h3>Chromium <code>args</code> worth knowing</h3>
+                <table>
+                    <tr>
+                        <th>Switch</th>
+                        <th>Why you'd add it</th>
+                    </tr>
+                    <tr>
+                        <td><code>--start-maximized</code></td>
+                        <td>Fill the screen. Only works with <code>viewport: null</code>, otherwise Playwright resizes the page back.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--window-size=1920,1080</code> / <code>--window-position=0,0</code></td>
+                        <td>Deterministic window geometry — useful on multi-monitor machines and for screenshots.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--disable-dev-shm-usage</code></td>
+                        <td>Docker's tiny <code>/dev/shm</code> crashes Chrome on heavy Lightning pages; this moves shared memory to disk. Standard in CI.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--no-sandbox</code></td>
+                        <td>Same job as <code>chromiumSandbox: false</code>. Only in a trusted container.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--disable-gpu</code></td>
+                        <td>Avoids GPU-driver flakiness on headless CI agents.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--disable-blink-features=AutomationControlled</code></td>
+                        <td>Removes the <code>navigator.webdriver</code> tell — helps when a login page or bot filter behaves differently for automation.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--disable-notifications</code> / <code>--disable-popup-blocking</code></td>
+                        <td>Kills the Chrome notification prompt; lets Salesforce's "open in new window" actions through.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--auto-open-devtools-for-tabs</code></td>
+                        <td>DevTools open on every new tab — handy while chasing a console error in an LWC.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--remote-debugging-port=9222</code></td>
+                        <td>Exposes CDP so another tool (or the attach recipe in section 04) can join the browser.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--disable-extensions-except=&lt;dir&gt;</code> + <code>--load-extension=&lt;dir&gt;</code></td>
+                        <td>Load an unpacked extension (e.g. Salesforce Inspector Reloaded). Needs a persistent context and headed mode.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--force-device-scale-factor=1</code> / <code>--font-render-hinting=none</code></td>
+                        <td>Makes screenshots byte-stable across machines — pair with visual comparisons.</td>
+                    </tr>
+                    <tr>
+                        <td><code>--lang=en-US</code></td>
+                        <td>Browser UI language; set <code>locale</code> (section 10) too, since that's what the page actually reads.</td>
+                    </tr>
+                </table>
+
+                <h3>Per-project launch options</h3>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="cmt">// Different launch behaviour per project — pick with --project=</span>
+projects: [
+{
+name: <span class="str">'local-watch'</span>, <span class="cmt">// authoring: visible, slowed down, maximized</span>
+use: { headless: <span class="kw">false</span>, viewport: <span class="kw">null</span>, launchOptions: { slowMo: <span class="str">400</span>, args: [<span class="str">'--start-maximized'</span>] } },
+},
+{
+name: <span class="str">'ci'</span>, <span class="cmt">// pipeline: headless, container-safe, no frills</span>
+use: {
+headless: <span class="kw">true</span>,
+launchOptions: { chromiumSandbox: <span class="kw">false</span>, args: [<span class="str">'--disable-dev-shm-usage'</span>, <span class="str">'--disable-gpu'</span>] },
+},
+},
+];</pre>
+                </div>
+
+                <h3>The same options outside the test runner</h3>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="kw">import</span> { chromium } <span class="kw">from</span> <span class="str">'playwright'</span>;
+
+<span class="cmt">// chromium.launch() takes launch options directly — this is the object `launchOptions` mirrors</span>
+<span class="kw">const</span> browser = <span class="kw">await</span> chromium.<span class="fn">launch</span>({
+channel: <span class="str">'chrome'</span>,
+headless: <span class="kw">false</span>,
+slowMo: <span class="str">200</span>,
+args: [<span class="str">'--start-maximized'</span>],
+proxy: { server: <span class="str">'http://proxy.corp:8080'</span>, bypass: <span class="str">'.internal,localhost'</span> },
+});
+
+<span class="cmt">// launchPersistentContext() takes launch AND context options in ONE object,</span>
+<span class="cmt">// because the profile dir IS the context — no separate browser.newContext() step.</span>
+<span class="kw">const</span> ctx = <span class="kw">await</span> chromium.<span class="fn">launchPersistentContext</span>(<span class="str">'./.auth/sf-profile'</span>, {
+channel: <span class="str">'chrome'</span>, <span class="cmt">// launch option</span>
+args: [<span class="str">'--start-maximized'</span>], <span class="cmt">// launch option</span>
+viewport: <span class="kw">null</span>, <span class="cmt">// context option</span>
+locale: <span class="str">'en-US'</span>, <span class="cmt">// context option</span>
+acceptDownloads: <span class="kw">true</span>, <span class="cmt">// context option</span>
+});</pre>
+                </div>
+
+                <div class="note">
+                    <strong>When launchOptions is ignored —</strong> if you connect to a browser you didn't start
+                    (<code class="inl">connectOverCDP</code>, <code class="inl">connect</code>, or a remote grid), the
+                    process already exists, so <code class="inl">args</code>, <code class="inl">headless</code>,
+                    <code class="inl">channel</code> and friends do nothing. <code class="inl">slowMo</code> is the one
+                    exception — it's applied client-side.
+                </div>
+            </section>
+
+            <!-- 10 -->
+            <section id="s10">
+                <div class="sec-head">
+                    <span class="num">10</span>
+                    <h2>Context &amp; emulation options in <code>use</code></h2>
+                </div>
+                <p class="lede">
+                    The other half of <code class="inl">use</code>: options handed to the browser <em>context</em> — the
+                    isolated profile each test gets. Identity, network, emulation, and artifacts all live here, and
+                    every one of them can be overridden per project, per file, or per test.
+                </p>
+
+                <h3>Identity &amp; navigation</h3>
+                <table>
+                    <tr>
+                        <th>Option</th>
+                        <th>What it does</th>
+                    </tr>
+                    <tr>
+                        <td><code>baseURL</code></td>
+                        <td>Prefix for relative <code>page.goto('/lightning/...')</code>. One env var swaps the whole suite to another org.</td>
+                    </tr>
+                    <tr>
+                        <td><code>storageState</code></td>
+                        <td>Cookies + localStorage to start with — a path or an inline object. This is what skips login.</td>
+                    </tr>
+                    <tr>
+                        <td><code>httpCredentials</code></td>
+                        <td><code>{ username, password }</code> for HTTP basic auth prompts (some sandbox front doors and staging proxies).</td>
+                    </tr>
+                    <tr>
+                        <td><code>extraHTTPHeaders</code></td>
+                        <td>Headers added to every request — e.g. a bypass token for a WAF sitting in front of the org.</td>
+                    </tr>
+                    <tr>
+                        <td><code>ignoreHTTPSErrors</code></td>
+                        <td>Accept invalid certs. Needed when a TLS-inspecting proxy re-signs Salesforce traffic.</td>
+                    </tr>
+                    <tr>
+                        <td><code>proxy</code></td>
+                        <td>Per-context proxy, overriding the launch-level one.</td>
+                    </tr>
+                    <tr>
+                        <td><code>offline</code></td>
+                        <td>Cuts network for the context — test your offline/error states.</td>
+                    </tr>
+                    <tr>
+                        <td><code>serviceWorkers</code></td>
+                        <td><code>'allow'</code> (default) or <code>'block'</code>. Block them when a stale worker serves old Lightning assets or swallows your route mocks.</td>
+                    </tr>
+                </table>
+
+                <h3>Emulation — make every machine agree</h3>
+                <table>
+                    <tr>
+                        <th>Option</th>
+                        <th>What it does</th>
+                    </tr>
+                    <tr>
+                        <td><code>viewport</code></td>
+                        <td>
+                            <code>{ width, height }</code> of the page. <code>null</code> means "use the real window"
+                            — required for <code>--start-maximized</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>deviceScaleFactor</code></td>
+                        <td>Pixel density. <code>2</code> gives retina-sized screenshots.</td>
+                    </tr>
+                    <tr>
+                        <td><code>isMobile</code> / <code>hasTouch</code></td>
+                        <td>Enable the mobile meta-viewport and touch events — Salesforce serves a different Lightning shell to touch devices.</td>
+                    </tr>
+                    <tr>
+                        <td><code>userAgent</code></td>
+                        <td>Override the UA string.</td>
+                    </tr>
+                    <tr>
+                        <td><code>locale</code></td>
+                        <td>
+                            e.g. <code>'en-US'</code>, <code>'de-DE'</code> — drives <code>Accept-Language</code> plus
+                            number/date formatting. Test that your date assertions aren't locale-dependent.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>timezoneId</code></td>
+                        <td><code>'Asia/Kolkata'</code>, <code>'America/Los_Angeles'</code>… essential when asserting on CreatedDate-style timestamps.</td>
+                    </tr>
+                    <tr>
+                        <td><code>geolocation</code> + <code>permissions</code></td>
+                        <td>Fake coordinates; you must also grant <code>['geolocation']</code> or the page never gets them.</td>
+                    </tr>
+                    <tr>
+                        <td><code>colorScheme</code> / <code>reducedMotion</code> / <code>forcedColors</code></td>
+                        <td>Drive the matching CSS media queries. <code>reducedMotion: 'reduce'</code> also kills SLDS animations, which quietly reduces flake.</td>
+                    </tr>
+                    <tr>
+                        <td><code>javaScriptEnabled</code> / <code>bypassCSP</code></td>
+                        <td>Turn JS off (rarely useful for Lightning), or bypass Content-Security-Policy so injected scripts run.</td>
+                    </tr>
+                    <tr>
+                        <td><code>acceptDownloads</code></td>
+                        <td>Default <code>true</code>; keep it on to assert on report/list-view exports.</td>
+                    </tr>
+                    <tr>
+                        <td><code>testIdAttribute</code></td>
+                        <td>Which attribute <code>getByTestId()</code> reads — set it to your LWC convention, e.g. <code>'data-qa'</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>contextOptions</code></td>
+                        <td>Escape hatch: raw options passed to <code>browser.newContext()</code> that have no dedicated <code>use</code> key.</td>
+                    </tr>
+                </table>
+
+                <h3>Artifacts &amp; timeouts</h3>
+                <table>
+                    <tr>
+                        <th>Option</th>
+                        <th>Values</th>
+                    </tr>
+                    <tr>
+                        <td><code>trace</code></td>
+                        <td><code>'off'</code>, <code>'on'</code>, <code>'retain-on-failure'</code>, <code>'on-first-retry'</code>, <code>'on-all-retries'</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>screenshot</code></td>
+                        <td><code>'off'</code>, <code>'on'</code>, <code>'only-on-failure'</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>video</code></td>
+                        <td><code>'off'</code>, <code>'on'</code>, <code>'retain-on-failure'</code>, <code>'on-first-retry'</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>actionTimeout</code> / <code>navigationTimeout</code></td>
+                        <td>Per-action and per-navigation ceilings (ms). <code>0</code> = no limit.</td>
+                    </tr>
+                </table>
+
+                <h3>Overriding per file or per test</h3>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="kw">import</span> { test, expect } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="cmt">// Applies to every test in this file — merged over the config's `use`</span>
+test.<span class="fn">use</span>({ timezoneId: <span class="str">'Asia/Kolkata'</span>, locale: <span class="str">'en-IN'</span>, viewport: { width: <span class="str">1280</span>, height: <span class="str">720</span> } });
+
+test.<span class="fn">describe</span>(<span class="str">'guest checkout on the community'</span>, () => {
+test.<span class="fn">use</span>({ storageState: { cookies: [], origins: [] } }); <span class="cmt">// deliberately logged OUT for this group</span>
+
+test(<span class="str">'shows the login prompt'</span>, <span class="kw">async</span> ({ page }) => {
+<span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/s/'</span>);
+<span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: <span class="str">'Log In'</span> })).<span class="fn">toBeVisible</span>();
+});
+});</pre>
+                </div>
+                <div class="tip">
+                    <strong>Precedence, highest first —</strong> CLI flag → <code class="inl">test.use()</code> in a
+                    describe → <code class="inl">test.use()</code> in a file → project
+                    <code class="inl">use</code> → top-level <code class="inl">use</code> → Playwright's default. When an
+                    option "isn't taking effect", something further up this list is winning.
+                </div>
+            </section>
+
+            <!-- 11 -->
+            <section id="s11">
+                <div class="sec-head">
+                    <span class="num">11</span>
                     <h2>Manual breaks &amp; time-based pauses</h2>
                 </div>
                 <p class="lede">
@@ -1068,7 +1785,7 @@ test(<span class="str">'runs in the sf-profile'</span>, <span class="kw">async</
 
                 <div class="note">
                     <strong>Why avoid hard waits —</strong> a fixed 3s is either too short (flaky) or too long (slow).
-                    Prefer waiting for a <em>condition</em> (section 09). Reserve
+                    Prefer waiting for a <em>condition</em> (section 12). Reserve
                     <code class="inl">waitForTimeout</code> for throwaway debugging.
                 </div>
 
@@ -1083,12 +1800,17 @@ test(<span class="str">'runs in the sf-profile'</span>, <span class="kw">async</
                     <pre><span class="cmt"># Env-driven slow motion for a full test run without editing code</span>
 <span class="p">$</span> PWSLOWMO=500 npx playwright test --headed <span class="cmt"># (read PWSLOWMO in your config's launchOptions)</span></pre>
                 </div>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="cmt">// The config side of that env var (see section 09 for the rest of launchOptions)</span>
+use: { launchOptions: { slowMo: <span class="fn">Number</span>(process.env.PWSLOWMO ?? <span class="str">0</span>) } }, <span class="cmt">// 0 = full speed</span></pre>
+                </div>
             </section>
 
-            <!-- 9 -->
-            <section id="s9">
+            <!-- 12 -->
+            <section id="s12">
                 <div class="sec-head">
-                    <span class="num">09</span>
+                    <span class="num">12</span>
                     <h2>Keep waiting until a component appears</h2>
                 </div>
                 <p class="lede">
@@ -1149,10 +1871,10 @@ test(<span class="str">'runs in the sf-profile'</span>, <span class="kw">async</
                 </div>
             </section>
 
-            <!-- 10 -->
-            <section id="s10">
+            <!-- 13 -->
+            <section id="s13">
                 <div class="sec-head">
-                    <span class="num">10</span>
+                    <span class="num">13</span>
                     <h2>The config file, fully commented</h2>
                 </div>
                 <p class="lede">
@@ -1194,24 +1916,73 @@ headless: <span class="kw">false</span>, <span class="cmt">// see the browser (s
     navigationTimeout: <span class="str">45_000</span>,   <span class="cmt">// max wait for a page load / redirect (SSO can be slow)</span>
 
     viewport: { width: <span class="str">1440</span>, height: <span class="str">900</span> }, <span class="cmt">// consistent window size across machines</span>
-    storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// start authenticated (see section 05/07)</span>
+    storageState: <span class="str">'./.auth/sf-state.json'</span>, <span class="cmt">// start authenticated (see sections 04/06)</span>
+    locale: <span class="str">'en-US'</span>,                <span class="cmt">// pin formatting so date/number assertions don't drift</span>
+    timezoneId: <span class="str">'Asia/Kolkata'</span>,     <span class="cmt">// pin the clock the org sees (section 10)</span>
+    testIdAttribute: <span class="str">'data-qa'</span>,     <span class="cmt">// what getByTestId() looks for in your LWCs</span>
+    acceptDownloads: <span class="kw">true</span>,          <span class="cmt">// needed to assert on report exports</span>
+
+    launchOptions: {              <span class="cmt">// browser-PROCESS settings (full list in section 09)</span>
+      slowMo: <span class="fn">Number</span>(process.env.PWSLOWMO ?? <span class="str">0</span>), <span class="cmt">// PWSLOWMO=500 to watch a run</span>
+      downloadsPath: <span class="str">'./downloads'</span>,               <span class="cmt">// keep exported files after the browser closes</span>
+      args: process.env.CI
+        ? [<span class="str">'--disable-dev-shm-usage'</span>, <span class="str">'--disable-gpu'</span>]  <span class="cmt">// container-safe</span>
+        : [<span class="str">'--disable-notifications'</span>],               <span class="cmt">// quieter local runs</span>
+    },
 
 },
 
 projects: [ <span class="cmt">// named run configs — pick with --project=</span>
 {
-name: <span class="str">'chromium-authed'</span>,
-use: { ...devices[<span class="str">'Desktop Chrome'</span>] }, <span class="cmt">// preset UA/viewport for desktop Chrome</span>
-},
-{
 name: <span class="str">'setup'</span>, <span class="cmt">// a login project that writes sf-state.json first</span>
 testMatch: /global\.setup\.ts/, <span class="cmt">// only the auth-setup file</span>
+use: { storageState: <span class="kw">undefined</span> }, <span class="cmt">// must start logged OUT, or it can't log in</span>
+},
+{
+name: <span class="str">'chromium-authed'</span>,
+dependencies: [<span class="str">'setup'</span>], <span class="cmt">// setup ALWAYS runs first and hands over the session</span>
+use: { ...devices[<span class="str">'Desktop Chrome'</span>] }, <span class="cmt">// preset UA/viewport for desktop Chrome</span>
 },
 ],
 
 <span class="cmt">// Run a local server before tests (skip for a live org; handy for LWC Jest/dev)</span>
 <span class="cmt">// webServer: { command: 'npm run start', url: 'http://localhost:3000', reuseExistingServer: !process.env.CI },</span>
 });</pre>
+                </div>
+
+                <h3>The login project that produces the session</h3>
+                <p>
+                    This is the automated version of section 04's recipe A: instead of recording the login by hand, a
+                    tiny "test" logs in once per run and saves the state every other project then loads.
+                </p>
+                <div class="block js">
+                    <div class="cap"></div>
+                    <pre><span class="cmt">// tests/global.setup.ts — runs first because other projects list it in `dependencies`</span>
+<span class="kw">import</span> { test <span class="kw">as</span> setup, expect } <span class="kw">from</span> <span class="str">'@playwright/test'</span>;
+
+<span class="kw">const</span> STATE = <span class="str">'./.auth/sf-state.json'</span>;
+
+setup(<span class="str">'authenticate'</span>, <span class="kw">async</span> ({ page }) => {
+<span class="kw">await</span> page.<span class="fn">goto</span>(process.env.SF_URL!); <span class="cmt">// login host, e.g. https://test.salesforce.com</span>
+<span class="kw">await</span> page.<span class="fn">getByLabel</span>(<span class="str">'Username'</span>).<span class="fn">fill</span>(process.env.SF_USER!); <span class="cmt">// credentials from env, never in Git</span>
+<span class="kw">await</span> page.<span class="fn">getByLabel</span>(<span class="str">'Password'</span>).<span class="fn">fill</span>(process.env.SF_PASS!);
+<span class="kw">await</span> page.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: <span class="str">'Log In'</span> }).<span class="fn">click</span>();
+
+<span class="cmt">// Wait for a post-login marker BEFORE saving, or you persist a half-finished session</span>
+<span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">toHaveURL</span>(/lightning/, { timeout: <span class="str">60_000</span> });
+<span class="kw">await</span> page.<span class="fn">context</span>().<span class="fn">storageState</span>({ path: STATE }); <span class="cmt">// the file every other project loads</span>
+});</pre>
+                </div>
+                <div class="block sh">
+                    <div class="cap"></div>
+                    <pre><span class="cmt"># One command: logs in, then runs the suite with that fresh session</span>
+<span class="p">$</span> SF_URL=https://test.salesforce.com SF_USER=qa@org.com.sandbox SF_PASS=<span class="str">'…'</span> npx playwright test --project=chromium-authed</pre>
+                </div>
+                <div class="note">
+                    <strong>MFA —</strong> this only works for a user who can log in without an interactive second
+                    factor: an IP-relaxed profile/trusted network range, or a login-flow exemption for the integration
+                    user. If your QA user is hard-MFA'd, stay on the hand-recorded storage state (section 04) or the
+                    persistent profile (section 06), where the device trust cookie survives.
                 </div>
 
                 <h3>The options you'll actually touch, ranked</h3>
@@ -1252,6 +2023,20 @@ testMatch: /global\.setup\.ts/, <span class="cmt">// only the auth-setup file</s
                         <td>
                             Separate a one-time <em>login</em> project from your <em>test</em> projects; choose at
                             runtime with <code>--project</code>.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>launchOptions</code></td>
+                        <td>
+                            The browser process itself — <code>args</code> for container stability,
+                            <code>slowMo</code> for demos, <code>downloadsPath</code> for export assertions. Section 09.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>locale</code> / <code>timezoneId</code></td>
+                        <td>
+                            Pins formatting and clock so a suite that passes in Chandigarh also passes on a US-East
+                            build agent.
                         </td>
                     </tr>
                 </table>
